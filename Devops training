@@ -1,0 +1,595 @@
+Welcome to Adv DevOps Training
+====
+Short url for codeshare: https://shorturl.at/Nk8IY
+Lab URL:	https://virtuallabs.palmeto.co.in/	
+
+S. No.	Participant Name	        Username	    Password
+1	Viswanadh Velamuri	            BOA-Devops01	P@lmeto@123
+2	Samridhi Jain	                BOA-Devops02	P@lmeto@123
+3	Mohanan, Vinisha	            BOA-Devops03	P@lmeto@123
+4	Nandagopal, Vishnu Priya	    BOA-Devops04	P@lmeto@123
+5	Gupta, Pramod K	                BOA-Devops05	P@lmeto@123
+6	Shenoy, Amit	                BOA-Devops06	P@lmeto@123
+7	Mohanraj, Karthikeyan	        BOA-Devops07	P@lmeto@123
+8	Narware, Ashwinee	            BOA-Devops08	P@lmeto@123
+9	T, Vignesh	                    BOA-Devops09	P@lmeto@123
+10	Gandi, Mahesh	                BOA-Devops10	P@lmeto@123
+11	Saxena, Siddhartha	            BOA-Devops11	P@lmeto@123
+12	Jaglan, Ritu	                BOA-Devops12	P@lmeto@123
+13	Betgerikar, Alok	            BOA-Devops13	P@lmeto@123
+14	Kumar, Rajesh2	                BOA-Devops14	P@lmeto@123
+15	Mahapatra, Subhadarshini	    BOA-Devops15	P@lmeto@123
+16	Aayush Jaiswal	                BOA-Devops16	P@lmeto@123
+17	Amol Mote	                    BOA-Devops17	P@lmeto@123
+18	Nikhita Kalamkar	            BOA-Devops18	P@lmeto@123
+19	Kashish Nanda	                BOA-Devops19	P@lmeto@123
+20	Vishvarajsinh Chauhan	        BOA-Devops20	P@lmeto@123
+21	Adweteey Dwivedi	            BOA-Devops21	P@lmeto@123
+22	Jegannthan	                    BOA-Devops22	P@lmeto@123
+23	Sampath, Marappan	            BOA-Devops23	P@lmeto@123
+24	Ramanathan, Keerthana	        BOA-Devops24	P@lmeto@123
+25	Sudheer, Bhogu Venkata Subbarama	BOA-Devops25	P@lmeto@123
+26	Vimal, Sneha 	                BOA-Devops26	P@lmeto@123
+27	Anandharaju, Prakash 	        BOA-Devops27	P@lmeto@123
+
+Pre Assessment:
+https://forms.office.com/r/GFFq1CAvdk
+
+Power on lab server
+---
+vmware workstation -- 
+    ubuntu-01 -- power on
+    ubuntu-02 -- power on
+    server-19 -- power on
+    
+Connect to ubunto-01 via putty
+---
+open VM Login Details.txt file in your lab server desktop and get the ip/username/password
+
+connect via putty
+
+install and configure jenkins
+---
+install latest patches
+---
+sudo su
+apt update
+apt upgrade -y
+
+install java 21
+---
+apt install openjdk-21-jdk -y
+
+install jenkins -- https://www.jenkins.io/doc/book/installing/linux/#debianubuntu
+--
+wget -O /usr/share/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" https://pkg.jenkins.io/debian-stable binary/ | tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+apt update
+apt install jenkins -y
+
+access jenkins
+---
+http://{your ubuntu01 ip}:8080/
+
+get inial admin password
+---
+cat /var/lib/jenkins/secrets/initialAdminPassword
+
+Configure jenkins
+---
+password from previous command
+
+Customize Jenkins page -- select "install suggested plugins"
+
+Create First Admin User:
+    username: admin
+    Password: admin
+    Confirm password: admin
+    Full name: Adminiustrator
+    E-mail address: admin@admin.com
+    
+save and continue
+
+save and finish
+
+start using jenkins
+
+Login to your github account and fork the repo
+---
+https://github.com/sathishbob/jenkins_test
+
+generate a key pair on jenkins
+--
+ssh-keygen
+
+Enter file in which to save the key (/root/.ssh/id_rsa): -- Press Enter
+Enter passphrase (empty for no passphrase): -- Press Enter
+Enter same passphrase again: -- Press Enter
+
+copy the contenet of public key
+---
+cat /root/.ssh/id_rsa.pub
+
+Add the public key to the user level in git hub
+---
+user profile icon -- settings-- ssh and gpg keys -- new ssh key
+title -- jenkins
+key -- public key content
+ADD ssh key
+
+add the private key to the jenkins
+---
+dashboard -- manage jenkins -- credentials -- system -- global credentials -- add credentials 
+kind : ssh username with private key
+    ID : github
+    Username: git
+    Private Key: select "enter directlry"
+		add
+		paster the output of command  - cat /root/.ssh/id_rsa 
+Create
+
+install git on jenkins
+---
+apt install git -y
+
+Get repo url
+---
+github -- repo -- code -- ssh
+
+Create a jenkins job to pull source code
+---
+dashboard -- New item
+Enter an item name : javaapp
+select -- freestyle project
+source code management -- select git
+    Repository URL -- repo ssh url (git@github.com:{your github id}/jenkins_test.git)
+    Credentials -- select "git"
+save
+
+Change the git ssh option
+---
+Dashboard -- manage jenkins -- security
+Git Host Key Verification Configuration
+    Host Key Verification Strategy -- accept first connection
+save
+
+Check error is gone on job source code management section
+---
+Dashboard -- javaapp -- Configuration -- source code management
+
+Run the job
+--
+Dashboard -- javaapp -- build now
+
+Install maven in global tools 
+---
+dashboard -- manage jenkins -- tools -- Maven installations -- Add Maven
+
+Name: MVN3
+version: 3.9.9
+
+Name: MVN2
+version: 2.2.1
+
+Save
+
+Add build step to the job
+---
+Dashboard -- javaapp -- Configuration -- Build Steps -- Add Build step
+    Invoke top-level Maven targets
+    Maven Version : MVN3
+    Goals: clean package
+    Advanced:
+        POM : api-gateway/
+save 
+
+Build Now
+
+Add post build steop to archive the jar file and test report
+---
+Dashboard -- javaapp -- Configuration -- Build Steps -- Add Post-build Actions
+    Archive the artifacts 
+    Files to archive: api-gateway/target/*.jar
+    
+    Publish JUnit test result report
+    Test report XMLs :  api-gateway/target/surefire-reports/*.xml
+    
+Create new branches in git hub
+---
+git hub -- your repo -- branches -- new brach
+    dev
+    test
+    
+Modify the job to allow the user to input the branch
+---
+Dashboard -- javaapp -- Configuration -- General -- select "This project is parameterized" -- Add parameters
+    String parameter
+        Name: BRANCH
+        Default Value: master
+        Description: Please enter the branch name to build
+        
+update the source code managenet to use the variable insted of master codes value "master"
+    Source code management -- git
+        Branches to build
+            Branch Specifier (blank for 'any') 
+                */${BRANCH}
+save
+
+Build with parameter-- dev
+
+Build
+
+Day 2
+====
+Power on lab server
+---
+vmware workstation -- 
+    ubuntu-01 -- power on
+    ubuntu-02 -- power on
+    server-19 -- power on
+    
+access jenkins
+---
+http://{your ubuntu01 ip}:8080/
+
+Modify the job to change parameter type from string to choice
+---
+Dashboard -- javaapp -- Configuration -- General -- select "This project is parameterized" -- delete string parameter
+Add parameters -- Choice Parameter
+        Name: BRANCH
+        Choices: 
+            master
+            dev
+            test
+        Description: 1
+
+save
+
+Build with parameter-- test
+
+
+Install git parameter plugin
+---
+Dashboard -- Manage Jenkins -- Plugins -- Avaliable plugins
+Git Parameter
+
+select and install
+
+Select "Restart Jenkins when installation is complete and no jobs are running"
+
+Modify the job to change parameter type from choice to git
+---
+Dashboard -- javaapp -- Configuration -- General -- select "This project is parameterized" -- delete string parameter
+Add parameters -- git Parameter
+        Name: BRANCH
+        Description: Please select the branch name to build
+        Parameter Type: Bramch
+        Default Value: origin/master
+        
+update the source code managenet to use the variable without path
+    Source code management -- git
+        Branches to build
+            Branch Specifier (blank for 'any') 
+                ${BRANCH}
+                
+save
+
+
+Create new branches in git hub
+---
+git hub -- your repo -- branches -- new branch
+    qa
+    
+
+Build with parameter-- origin/qa
+
+Cron expression
+--
+* 	* 	* 	* 	*
+Minutes
+	hour
+		day
+			month
+				Day of the week
+
+Every day at 10 AM - 0 10 * * *
+Every day at 10 PM - 0 22 * * *
+Every weekday at 10 PM - 0 22 * * 1,2,3,4,5
+Every weekday at 10 PM - 0 22 * * 1-5
+every month first day 10 am - 0 10 1 * *
+every quarter first day 10 am - 0 10 1 1,3,6,9 *
+every quarter first day 10 am - 0 10 1 */4 *
+every 2 minutes - */2 * * * *
+
+Modify the job to run every 2 minutes
+---
+Dashboard -- javaapp -- Configuration -- triggeres
+
+Select Build periodically
+*/2 * * * *
+
+
+Modify the job to run every 2 minutes butr create build only when a change is avaliable in repo
+---
+Dashboard -- javaapp -- Configuration -- triggeres
+
+uncheck Build periodically
+
+Select poll scm
+*/2 * * * *
+
+
+you will see a new option git polling log
+
+Add a commit to repo and see whether the job is triggerd
+
+
+Create a new pipeline job
+---
+dashboard -- new item -- javapipeline -- pipeline -- create
+
+pipeline:
+
+v  
+
+save 
+
+Build now
+
+To view the pipeline graph
+---
+Dashboard -- Manage Jenkins -- Appearance
+Pipeline graph view -- select
+    Show pipeline graph on job page
+    Show pipeline graph on build page
+save
+
+Rewrite the pipeline to have multiple stages
+---
+pipeline {
+    agent any
+
+    tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "MVN3"
+    }
+
+    stages {
+        stage('pull scm') {
+            steps {
+                // Get some code from a GitHub repository
+                git credentialsId: 'github', url: 'git@github.com:{your github id}/jenkins_test.git'
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh "mvn -Dmaven.test.failure.ignore=true -f api-gateway/ clean package"
+            }
+                            
+        }
+        
+        stage('archive') {
+            steps {
+                archiveArtifacts artifacts: 'api-gateway/target/*.jar', followSymlinks: false
+            }
+        }
+        
+        stage('publish test result') {
+            steps {
+                junit 'api-gateway/target/surefire-reports/*.xml'
+            }
+        }
+    }
+}
+
+Modify the pipeline to get the pipeline from repo
+---
+dashboard -- javapipeline -- configure -- pipeline
+Definition : Pipeline script form SCM
+    SCM : git
+        Repositories -- Repository URL
+        credentails -- git
+Script Path : Jenkinsfile
+
+triggers
+    Select poll scm
+        * * * * *
+        
+save
+
+In the repo update jenkins file
+---
+git hub -- your repo -- Jenkins file
+
+
+pipeline {
+    agent any
+
+    tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "MVN3"
+    }
+
+    stages {
+        stage('pull scm') {
+            steps {
+                // Get some code from a GitHub repository
+                git credentialsId: 'github', url: 'git@github.com:{your github id}/jenkins_test.git'
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh "mvn -Dmaven.test.failure.ignore=true -f api-gateway/ clean package"
+            }
+                            
+        }
+        
+        stage('archive') {
+            steps {
+                archiveArtifacts artifacts: 'api-gateway/target/*.jar', followSymlinks: false
+            }
+        }
+        
+        stage('publish test result') {
+            steps {
+                junit 'api-gateway/target/surefire-reports/*.xml'
+            }
+        }
+    }
+}
+
+commit changes
+
+Modify the jenkins file in repo to add a new stage 
+---
+
+pipeline {
+    agent any
+
+    tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "MVN3"
+    }
+
+    stages {
+        stage('pull scm') {
+            steps {
+                // Get some code from a GitHub repository
+                git credentialsId: 'github', url: 'git@github.com:{your github id}/jenkins_test.git'
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh "mvn -Dmaven.test.failure.ignore=true -f api-gateway/ clean package"
+            }
+                            
+        }
+        
+        stage('archive') {
+            steps {
+                archiveArtifacts artifacts: 'api-gateway/target/*.jar', followSymlinks: false
+            }
+        }
+        
+        stage('publish test result') {
+            steps {
+                junit 'api-gateway/target/surefire-reports/*.xml'
+            }
+        }
+        
+        stage('test') {
+            steps {
+                sh "echo testing"
+            }
+        }
+    }
+}
+
+Jenkins pipeline documentation
+---
+https://www.jenkins.io/doc/book/pipeline/
+
+Create a new pipeline job
+---
+dashboard -- new item -- parameter -- pipeline -- create
+
+pipeline:
+
+pipeline {
+    agent any
+    
+    stages{
+        stage("setup parameter") {
+            steps {
+                script {
+                    properties([
+                        parameters([
+                            choice(
+                                choices: ["dev", "uat", "prod"],
+                                name: "ENVIRONMENT"
+                            ),
+                            string(
+                                defaultValue: "training",
+                                name: "STRING"
+                            )
+                        ])
+                    ])
+                }
+            }
+        }
+        
+        stage("print parameter") {
+            steps {
+                echo "choice parameter is $ENVIRONMENT"
+                echo "string parameter is $STRING"
+            }
+        }
+    }
+}
+
+save
+
+build
+
+It will be a failure
+
+Build with parameter
+
+Modifyt the pipeline to add triggeres
+---
+
+pipeline {
+    agent any
+    
+    triggers {
+        cron("*/5 * * * *")
+    }
+    
+    stages{
+        stage("setup parameter") {
+            steps {
+                script {
+                    properties([
+                        parameters([
+                            choice(
+                                choices: ["dev", "uat", "prod"],
+                                name: "ENVIRONMENT"
+                            ),
+                            string(
+                                defaultValue: "training",
+                                name: "STRING"
+                            )
+                        ])
+                    ])
+                }
+            }
+        }
+        
+        stage("print parameter") {
+            steps {
+                echo "choice parameter is $ENVIRONMENT"
+                echo "string parameter is $STRING"
+            }
+        }
+    }
+}
+
+Connect to ubuntu-02 node via putty
+---
+Connect to ubunto-02 via putty
+---
+open VM Login Details.txt file in your lab server desktop and get the ip/username/password
+
+connect via putty
+
+sudo su
+
+apt update
+
+install java 21
+---
+apt install openjdk-21-jdk -y
+
