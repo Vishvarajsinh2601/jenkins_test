@@ -10,7 +10,7 @@ pipeline {
         stage('pull scm') {
             steps {
                 // Get some code from a GitHub repository
-                git credentialsId: 'github', url: 'git@github.com:{your github id}/jenkins_test.git'
+               git credentialsId: 'github', url: 'git@github.com:Vishvarajsinh2601/jenkins_test.git'
             }
         }
         
@@ -30,6 +30,12 @@ pipeline {
         stage('publish test result') {
             steps {
                 junit 'api-gateway/target/surefire-reports/*.xml'
+            }
+        }
+        
+        stage('test') {
+            steps {
+                sh "echo testing"
             }
         }
     }
