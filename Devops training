@@ -465,7 +465,7 @@ pipeline {
             steps {
                 sh "mvn -Dmaven.test.failure.ignore=true -f api-gateway/ clean package"
             }
-                            
+                    
         }
         
         stage('archive') {
@@ -593,3 +593,1271 @@ install java 21
 ---
 apt install openjdk-21-jdk -y
 
+Install git
+---
+apt install git -y
+
+Add the node in master
+---
+Dashboard -- managejenkins -- nodes -- new node
+
+Node name : linux
+    select "Permenant agent"
+Create
+
+Number of executors: 2
+Remote root directory: /home/palmeto
+Labels: linux
+Usage: "Only build jobs with label expression matching this node"
+Launch method: "Launch agent via ssh"
+Host: {ubuntu 2 ip address}
+Credentials:
+    Add
+       kind: User name with password
+       Username: palmeto
+       password: palmeto
+       ID: linux
+      ADD
+    Select palmeto from list
+Host Key Verification Strategy : Non verifying verification statergy
+save
+
+Check linux is in sync
+
+Configure a job to run on a node
+--
+Dashboard -- javaapp -- Configuration -- general
+select "Restrict where this project can be run"
+Label Expression: linux
+
+save
+
+build with parameter
+
+Update the pipeline to run the job on linux node
+----
+
+pipeline {
+    agent {
+        label 'linux'
+    }
+
+    tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "MVN3"
+    }
+
+    stages {
+        stage('pull scm') {
+            steps {
+                // Get some code from a GitHub repository
+                git credentialsId: 'github', url: 'git@github.com:{your github id}/jenkins_test.git'
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh "mvn -Dmaven.test.failure.ignore=true -f api-gateway/ clean package"
+            }
+                            
+        }
+        
+        stage('archive') {
+            steps {
+                archiveArtifacts artifacts: 'api-gateway/target/*.jar', followSymlinks: false
+            }
+        }
+        
+        stage('publish test result') {
+            steps {
+                junit 'api-gateway/target/surefire-reports/*.xml'
+            }
+        }
+        
+        stage('test') {
+            steps {
+                sh "echo testing"
+            }
+        }
+    }
+}
+
+Update the pipeline to run a particular stage on a node
+---
+pipeline {
+    agent any
+    
+    tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "MVN3"
+    }
+
+    stages {
+        stage('pull scm') {
+            steps {
+                // Get some code from a GitHub repository
+                git credentialsId: 'github', url: 'git@github.com:{your github id}/jenkins_test.git'
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                sh "mvn -Dmaven.test.failure.ignore=true -f api-gateway/ clean package"
+            }
+                            
+        }
+        
+        stage('archive') {
+            steps {
+                archiveArtifacts artifacts: 'api-gateway/target/*.jar', followSymlinks: false
+            }
+        }
+        
+        stage('publish test result') {
+            steps {
+                junit 'api-gateway/target/surefire-reports/*.xml'
+            }
+        }
+        
+        stage('test') {
+            agent {
+                label 'linux'
+            }
+            steps {
+                sh "echo testing"
+            }
+        }
+    }
+}
+
+Login to windows node in vmware
+---
+vmware -- server 19
+    vm -- send "ctrl+ alt+ del"
+
+Login with password
+
+Install jdk
+---
+https://download.oracle.com/java/21/latest/jdk-21_windows-x64_bin.exe
+
+Install git bash
+---
+https://github.com/git-for-windows/git/releases/download/v2.49.0.windows.1/Git-2.49.0-64-bit.exe
+
+Enable tcp port for inbound agent
+--
+dashboard -- mange -- security -- Agents
+TCP port for inbound agents -- select "Fixed"
+50000
+
+save
+
+Add the node in master
+---
+Dashboard -- managejenkins -- nodes -- new node
+
+Node name : windows
+    select "Permenant agent"
+Create
+
+Number of executors: 2
+Remote root directory: C:\jenkins
+Labels: windows
+Usage: "Only build jobs with label expression matching this node"
+Launch method: "Launch agent by connecting it to the controller"
+save
+
+
+click on windows node
+
+Copy the command below "Run from agent command line: (Windows) "
+
+
+open command prompt as administrator in windows node and pater the copied command
+---
+sample:
+curl.exe -sO http://192.168.0.201:8080/jnlpJars/agent.jar
+java -jar agent.jar -url http://192.168.0.201:8080/ -secret 6b5ba35e8be7d64b0076f96350dbbdaa29edd280d78f6542e78925c9d3896179 -name windows -webSocket -workDir "C:\jenkins"
+
+
+Check node is in sync
+---
+Dashboard -- managejenkins -- nodes 
+
+Configure a job to run on a windows node
+--
+Dashboard -- javaapp -- Configuration -- general
+select "Restrict where this project can be run"
+Label Expression: windows
+
+save
+
+build with parameter
+
+Variables in pipeline
+---
+
+dashboard -- new item -- variable -- pipeline -- create
+
+pipeline {
+    agent any
+    
+    environment {
+        TRAINING = "devops"
+        TOPIC = "jenkins"
+    }
+    
+    stages {
+        stage('local') {
+            environment {
+                TOPIC = "cicd"
+            }
+            
+            steps {
+                sh "echo training is ${TRAINING} and topic is ${TOPIC}"
+            }
+        }
+        
+        stage('global') {
+            steps {
+                sh "echo training is ${TRAINING} and topic is ${TOPIC}"
+            }
+        }
+    }
+}
+
+save
+
+build
+
+Condition in pipeline
+---
+
+dashboard -- new item -- Condition -- pipeline -- create
+
+pipeline {
+    agent any
+    environment {
+        BUILD = "${currentBuild.getNumber() % 2}"
+    }
+    
+    stages {
+        stage("normal") {
+            steps {
+                echo "job with condition"
+            }
+        }
+        
+        stage("condition") {
+            when{
+                environment name: "BUILD", value: "0"
+            }
+            steps  {
+                echo "build number is even"
+            }
+        }
+    }
+}
+
+save
+
+build
+
+loop in pipeline
+---
+
+dashboard -- new item -- Condition -- pipeline -- create
+
+def map = [training: "devops", topic: "jenkins", lab: "onprem" ]
+
+pipeline {
+    agent any
+    stages {
+        stage("loop") {
+            steps {
+                script {
+                    map.each { entry ->
+                    stage(entry.key) {
+                        echo "$entry.value"
+                    }
+                    }
+                }
+            }
+        }
+    }
+}
+
+save
+
+build
+
+Parallel in pipeline
+----
+
+dashboard -- new item -- parallel -- pipeline -- create
+
+pipeline {
+    agent any
+    
+    stages {
+        stage("normal") {
+            steps {
+                echo "I am running in sequence"
+            }
+        }
+        
+        stage("parallel") {
+            parallel {
+                stage("firefox") {
+                    steps {
+                        echo "I am testing in firefox"
+                    }
+                }
+                
+                stage("safari") {
+                    steps {
+                        echo "I am testing in safari"
+                    }
+                }
+                
+                stage("chrome") {
+                    steps {
+                        echo "I am testing in chrome"
+                    }
+                }
+                
+                stage("edge") {
+                    steps {
+                        echo "I am testing in edge"
+                    }
+                }
+            }
+        }
+    }
+}
+
+save
+
+build
+
+Approval in pipeline
+---
+dashboard -- new item -- approval -- pipeline -- create
+
+pipeline {
+    agent any
+    
+    stages {
+        stage("pull") {
+            steps {
+                echo "pulling code"
+            }
+        }
+        
+        stage("build") {
+            steps {
+                echo "building code"
+            }
+        }
+        
+        stage("approval") {
+            steps {
+                input "Please approve to proceed with deployment"
+            }
+        }
+        
+        stage ("deployment") {
+            steps {
+                echo "deploying application"
+            }
+        }
+    }
+}
+
+save
+
+build
+
+in the build 1 -- click "paused for input" -- click proceed
+
+
+build
+
+in the build 2 -- click "paused for input" -- click abort
+
+Modify the job to have a time out for approval process
+---
+
+dashboard -- approval -- configure -- pipeline
+
+pipeline {
+    agent any
+    
+    stages {
+        stage("pull") {
+            steps {
+                echo "pulling code"
+            }
+        }
+        
+        stage("build") {
+            steps {
+                echo "building code"
+            }
+        }
+        
+        stage("approval") {
+            options {
+                timeout(time:1, unit: 'MINUTES')
+            }
+            steps {
+                input "Please approve to proceed with deployment"
+            }
+        }
+        
+        stage ("deployment") {
+            steps {
+                echo "deploying application"
+            }
+        }
+    }
+}
+
+build
+
+dont provide approval, it will exit after a minute
+.
+build
+
+in the new build  -- click "paused for input" -- click proceed
+
+Day 3
+====
+Power on lab server
+---
+vmware workstation -- 
+    ubuntu-01 -- power on
+    
+connect via putty and Switch to root user
+---
+sudo su
+
+install docker
+---
+Add Docker's official GPG key:
+---
+apt update
+apt install ca-certificates curl -y
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+
+Add the repository to Apt sources:
+---
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+apt-get update
+
+install docker
+---
+apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+
+check docker installtion
+---
+docker ps
+
+List the images in the server
+--
+docker images
+
+run a hello world container
+---
+docker run hello-world
+
+list the images
+---
+docker images
+
+run a hello world container again
+---
+docker run hello-world
+
+list the running container
+---
+docker ps
+
+list all containers
+---
+docker ps -a
+
+remove a exitied container
+--
+docker rm {your container id}
+docker rm {your container name}
+
+remove a image
+---
+docker rmi hello-world
+
+run a ngnix container
+---
+docker run nginx
+
+CTRL + C
+
+run the container in daemon mode
+---
+docker run -d nginx
+
+stop a running container
+--
+docker stop {your container id}
+
+remove all exited containers
+---
+docker rm {your container id 1} {your container id 2}
+
+option to remove the container after exit
+---
+docker run -d --rm nginx
+
+stop a running container
+---
+docker stop {your container id}
+
+check the exited container
+---
+docker ps -a
+
+run a conatiner with port mapping
+---
+docker run -d --rm -p 80:80 nginx
+
+Access ubuntu01 ip via browser
+---
+http://{ubunt01 ip}
+
+stop the container
+---
+docker stop {your container id}
+
+run the container with custom name
+---
+docker run -d --rm --name web -p 80:80 nginx
+
+get the logs of running container
+--
+docker logs web
+
+follow the logs of container
+---
+docker logs -f web
+ 
+to exit Ctrl + c
+
+take a teriminal inside the container
+---
+docker exec -it web bash
+
+modify the index.html inside the container
+---
+echo "Welcome to docker training" > /usr/share/nginx/html/index.html
+
+Come out of teriminal
+---
+exit
+
+run a command inside the container
+--
+docker exec web ls -l
+docker exec web cat /usr/share/nginx/html/index.html
+
+get the real time stats
+---
+docker stats web
+
+command to list running process
+---
+docker top web
+
+Docker cli documentation
+---
+https://docs.docker.com/reference/cli/docker/
+
+switch to home directory of root user
+---
+cd
+
+create a directory for firstdocker
+---
+mkdir firstdocker
+cd 
+
+Install latest version of vi editor
+---
+apt install vim -y
+
+Create a dockerfile
+---
+vi Dockerfile
+
+Docker file content
+---
+
+#Define base image
+FROM ubuntu:22.04
+
+MAINTAINER sathish
+LABEL owner.email="sathishbob@gmail.com"
+
+# install apache package
+RUN apt update
+RUN apt install apache2 -y
+
+# Craete a static webpage
+RUN echo "Welcome to docker training" > /var/www/html/index.html
+
+# Create a script to start the apache in foreground
+RUN echo ". /etc/apache2/envvars" > /run.sh
+RUN echo "mkdir -p /var/run/apache2" >> /run.sh
+RUN echo "mkdir -p /var/lock/apache2" >> /run.sh
+RUN echo "/usr/sbin/apache2 -D FOREGROUND" >> /run.sh
+
+# execute permiussion for the script
+RUN chmod +x /run.sh
+
+# Define the port number
+EXPOSE 80
+
+CMD /run.sh
+
+buld the docker file
+---
+docker build -t apache .
+
+list the images
+---
+docker images
+
+stop the web container
+---
+docker stop web
+
+run the container
+--
+docker run -d --rm --name web -p 80:80 apache
+
+Access ubuntu01 ip via browser
+---
+http://{ubunt01 ip}
+
+Create a account at docker hub
+---
+https://hub.docker.com/
+
+command to get the layers of a image
+---
+docker image history apache
+
+login to dockerhub from cli
+---
+docker login
+
+Follow on screen instruction
+
+try to ush the image apache -- this will fail
+---
+docker push apache
+
+rename the image with your dockerhub account id in the name
+---
+docker tag apache {your docker hub id}/apache
+
+push the image
+---
+docker push {your docker hub id}/apache
+
+stop the container
+---
+docker kill {your container id}
+
+command to pull a image
+---
+docker pull ubuntu
+ 
+command to pull ubuntu 22
+----
+docker pull ubuntu:22.04
+
+command to delete all exitied containers
+---
+docker container prune
+
+command to delete dangiling images
+---
+docker image prune
+
+command to delete all the images without at least one container associated to them
+---
+docker image prune -a
+
+command for system cleanup
+--
+docker image prune -a
+
+command for deeper system clean
+--
+docker image prune -ae -a
+
+run a jenkins container
+---
+docker run -d --rm --name jenkins -p 80:8080 jenkins/jenkins
+
+get the password from the logs
+---
+docker logs jenkins
+
+Configure jenkins and create a test job
+
+stop the container
+---
+docker stop jenkins
+
+try to rerun the container
+---
+docker run -d --rm --name jenkins -p 80:8080 jenkins/jenkins
+
+stop the container
+---
+docker stop jenkins
+
+command to list volumes
+---
+docker volume ls
+
+create a volume
+---
+docker volume create jenkinsdata
+
+Get details of the volume crearred
+---
+docker inspect volume jenkinsdata
+
+run the container by attaching the volume
+---
+docker run -d --rm --name jenkins -p 80:8080 -v jenkinsdata:/var/jenkins_home jenkins/jenkins
+
+get the password from the volume(local)
+---
+cat /var/lib/docker/volumes/jenkinsdata/_data/secrets/initialAdminPassword
+
+stop the container
+---
+docker stop jenkins
+
+run the container by attaching the volume
+---
+docker run -d --rm --name jenkins -p 80:8080 -v jenkinsdata:/var/jenkins_home jenkins/jenkins
+
+cwd to root directory
+---
+cd
+
+Create a diretory for cmd
+---
+mkdir cmd
+vi cmd/Dockerfile
+
+contenet of docker file
+----
+FROM busybox
+CMD ["ping", "-c", "4","www.google.com"]
+
+build and run the container
+---
+docker build -t cmd cmd/
+docker run cmd
+
+try to run the container with argument -- this will error
+---
+docker run cmd www.microsoft.com
+
+create a directory for entrypoint
+---
+mkdir entry
+vi entry/Dockerfile
+
+contenet of docker file
+---
+FROM busybox
+ENTRYPOINT ["ping", "-c", "4"]
+
+build and run the container
+---
+docker build -t entry entry/
+
+run the container with argument
+---
+docker run entry www.google.com
+docker run entry www.microsoft.com
+
+
+Create a directory for entry point and cmd
+---
+mkdir entrycmd
+vi entrycmd/Dockerfile
+
+contenet of docker file
+---
+FROM busybox
+ENTRYPOINT ["ping","-c","4"]
+CMD ["www.google.com"]
+
+build and run the container with and without arguments
+---
+docker build -t entrycmd entrycmd/
+docker run entrycmd
+docker run entrycmd www.microsoft.com
+
+Create a directory for environment variable
+---docker run entrycmd www.microsoft.com
+mkdir env
+vi env/Dockerfile
+
+contenet of docker file
+---
+FROM busybox
+ENV var1=training var2=docker
+CMD ["env"]
+
+build and run the container
+---
+docker build -t environment env/
+docker run environment
+
+pass the environment variable while running the container
+---
+docker run -e var3=azure environment
+docker run -e var3=azure -e var1=test environment
+
+copy diretive
+---
+mkdir copy
+vi copy/Dockerfile
+
+contenet of docker file
+---
+FROM ubuntu
+RUN apt update
+RUN apt install apache2 -y
+WORKDIR /var/www/html
+COPY index.html .
+CMD ["ls","-l"]
+
+vi copy/index.html
+
+contenet of index.html
+---
+<html>
+        <body>
+                <h1> Welcome to docker training </h1>
+        </body>
+</html>
+
+docker build -t webapp copy/
+
+docker run webapp
+
+ docker run webapp cat index.html
+ 
+add directive
+---
+vi copy/Dockerfile
+
+contenet of docker file
+---
+
+FROM ubuntu
+RUN apt update
+RUN apt install apache2 -y
+WORKDIR /var/www/
+COPY index.html .
+CMD ["ls","-l"]
+
+build and run the container
+---
+docker build -t webapp copy/
+
+docker run webapp
+
+user directive
+---
+mkdir user
+
+vi user/Dockerfile
+
+contenet of docker file
+---
+FROM ubuntu
+RUN useradd -m training
+USER training
+CMD ["whoami"]
+
+build and run the container
+---
+docker build -t user user/
+
+docker run user
+
+run a container without limit
+---
+docker run -d --name withoutlimit sathishbob/website
+
+get the stats of container
+---
+docker stats withoutlimit
+
+get the cpu limit
+---
+docker inspect withoutlimit | grep -i nano
+
+run a container with cpu and memory limit
+---
+docker run -d --memory="256m" --cpus=0.5 --name withlimit sathishbob/website
+
+get the stats of container
+---
+docker stats withlimit
+
+get the cpu limit
+---
+docker inspect withlimit | grep -i nano
+
+Day4
+===
+command to list the networks
+---
+docker network ls
+
+Stop all the running containers
+---
+docker stop withlimit withoutlimit jenkins
+
+Remove all stopped containers
+---
+docker container prune
+
+run a container on host network
+---
+docker run -d --rm --name web --network host sathishbob/apache
+
+run a container on default network
+---
+docker run -it busybox ifconfig
+
+run a container on the host network
+---
+docker run -it --network host busybox ifconfig
+
+run a container on the none network
+---
+docker run -it --network none busybox ifconfig
+
+create two networks
+---
+docker network create networka
+docker network create networkb
+
+inspect the network
+---
+docker network inspect networka
+docker network inspect networkb
+
+Stop web container
+---
+docker stop web
+
+bring web container on networka
+---
+docker run -itd --network networka --network-alias web --name web alpine
+
+bring db container on networkb
+---
+docker run -itd --network networkb --network-alias db --name db alpine
+
+bring app container on networka
+---
+docker run -itd --network networka --network-alias app --name app alpine
+
+attache networkb to app container
+---
+docker network connect --alias app networkb app
+
+check the ip of all the containers
+---
+docker exec web ip a
+docker exec db ip a
+docker exec app ip a
+
+check the connectivity from web
+---
+docker exec web ping -c 2 app
+docker exec web ping -c 2 db ---bad connection
+
+check the connectivity from app
+---
+docker exec app ping -c 2 web
+docker exec app ping -c 2 db
+
+check the connectivity from app
+---
+docker exec db ping -c 2 app
+docker exec db ping -c 2 web --bad connection
+
+docker compose
+--
+cd 
+mkdir dockercompose
+cd dockercompose/
+
+create docker compose yaml
+---
+vi docker-compose.yml
+
+docker compose contene
+---
+version: '3.8'  # Version of Docker Compose
+
+services:
+  web:
+    image: nginx:latest  # Nginx web server
+    ports:
+      - "80:80"  # Map port 80 on the host to port 80 on the container
+    volumes:
+      - ./html:/usr/share/nginx/html  # Mount local directory for serving static files
+    depends_on:
+      - db  # Ensure web starts after the database
+
+  db:
+    image: mysql:5.7  # MySQL database
+    environment:
+      MYSQL_ROOT_PASSWORD: examplepassword  # Set root password for MySQL
+      MYSQL_DATABASE: exampledb  # Create a database called 'exampledb'
+      MYSQL_USER: user  # Create a user
+      MYSQL_PASSWORD: userpassword  # Set password for user
+    volumes:
+      - db_data:/var/lib/mysql  # Persist MySQL data
+
+volumes:
+  db_data:  # Named volume for the MySQL database
+
+bring up the docker compose
+---
+docker compose up
+
+Ctrl + C to come out
+
+bring up the docker container in daemon mode
+---
+docker compose up -d
+
+Command to list docker compose services
+---
+docker compose ps
+
+Command to get the logs 
+---
+docker compose logs
+docker compose logs web
+docker compose logs db
+
+Command to bring down the services
+---
+docker compose down
+
+
+Azure credentaisl
+---
+URL	Email	Password
+https://portal.azure.com	traininguser3@zippyopsgmail.onmicrosoft.com	    8vvH3sIKQh5GSizf -- sathish(trainer)
+https://portal.azure.com	traininguser4@zippyopsgmail.onmicrosoft.com	    8vvH3sIKQh5GSizf -- Keerthana
+https://portal.azure.com	traininguser5@zippyopsgmail.onmicrosoft.com	    8vvH3sIKQh5GSizf -- Marappan
+https://portal.azure.com	traininguser6@zippyopsgmail.onmicrosoft.com	    8vvH3sIKQh5GSizf -- amit
+https://portal.azure.com	traininguser7@zippyopsgmail.onmicrosoft.com	    8vvH3sIKQh5GSizf 
+https://portal.azure.com	traininguser8@zippyopsgmail.onmicrosoft.com	    8vvH3sIKQh5GSizf-- Karthik
+https://portal.azure.com	traininguser9@zippyopsgmail.onmicrosoft.com	    8vvH3sIKQh5GSizf -- Samridhi
+https://portal.azure.com	traininguser10@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- mahesh
+https://portal.azure.com	traininguser11@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- vignesh
+https://portal.azure.com	traininguser12@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Vinisha
+https://portal.azure.com	traininguser13@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Alok B
+https://portal.azure.com	traininguser14@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Vishnu Priya
+https://portal.azure.com	traininguser15@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Subha
+https://portal.azure.com	traininguser16@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf
+https://portal.azure.com	traininguser17@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Amol
+https://portal.azure.com	traininguser18@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Rajesh
+https://portal.azure.com	traininguser19@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf --ashwinee
+https://portal.azure.com	traininguser20@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf
+https://portal.azure.com	traininguser21@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf
+https://portal.azure.com	traininguser22@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf
+https://portal.azure.com	traininguser23@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf
+https://portal.azure.com	traininguser24@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Nikhita
+https://portal.azure.com	traininguser25@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf
+https://portal.azure.com	traininguser26@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Sneha
+https://portal.azure.com	traininguser27@zippyopsgmail.onmicrosoft.com	8vvH3sIKQh5GSizf -- Prakash
+
+Create kubernetes cluster
+---
+azure -- search "Kubernetes services" -- create -- kubernetes cluster
+General
+    Resource group -- Create new -- Name -- {your name} -- ok
+    Cluster details -- Cluster preset configuration -- Dev/Test
+    Kubernetes cluster name -- {your name}
+    Region -- East US
+    Availability zones -- None
+    AKS pricing tier -- Free
+    Kubernetes version -- 1.30.10
+    Authentication and Authorization -- local accounts with kubernetes RBAC
+    
+    Next
+
+Node Pools
+    agent pool
+        Node size -- chose a size
+            select D2s_v3
+        update
+        
+    next
+    
+Networking: No changes
+
+    next
+    
+Integration: No changes
+
+    next
+    
+Monitoring: No changes
+
+    next
+    
+Security: No changes
+
+    next
+    
+Advanced: No changes
+
+    next
+    
+Tags: No changes
+
+    next
+    
+Review and create: No changes
+
+    Create
+    
+Click on "Go to Resources"
+
+Install azure cli and kubectl on the ubuntu 01
+---
+install azure cli
+---
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+check azure cli installation
+---
+az --version
+
+login to azure cli
+---
+az login
+
+follow on screen instruction
+
+Press Enter
+
+download and install kubectl
+---
+curl -LO https://dl.k8s.io/release/v1.30.10/bin/linux/amd64/kubectl
+
+chmod +x kubectl
+mv kubectl /usr/bin/
+
+Get the kubeconfig from azure
+-- 
+azure -- kubernetes service -- your clustet -- connect
+    copy paste the command under "Download cluster credentials"
+    
+test the connectivity
+---
+kubectl get nodes
+
+command to get all nodes
+---
+kubectl get nodes
+
+to get detalled information about a resource
+---
+kubectl describe node  {your node name}
+
+to get namespaces
+---
+kubectl get namespaces
+kubectl get ns
+
+get deployments
+---
+kubectl get deployment
+kubectl get deployment -n kube-system
+kubectl get deployment -A
+kubectl get deployment --all-namespaces
+kubectl get deploy -A
+
+replicaset
+---
+kubectl get rs -A
+kubectl get rs -n kube-system
+kubectl get replicaset -n kube-system
+
+pod
+--
+kubectl get pod -A
+kubectl get po  -n kube-system
+
+Service
+---
+kubectl get service -n kube-system
+kubectl get svc -n kube-system
+
+Daemonset
+---
+kubectl get daemonset -n kube-system
+kubectl get ds -n kube-system
+
+statefulset
+--
+kubectl get statefulset -n kube-system
+
+persistenntvolumeclaim on all namespaces
+---
+kubectl get pvc -n kube-system
+kubectl get persistentvolumeclaim -n kube-system
+
+storageclass
+---
+kubectl get sc
+kubectl get storgeclass
+
+persistant volume
+---
+kubectl get pv
+kubectl get persistantvolume
+
+config map
+---
+kubectl get cm --all-namespaces
+kubectl get configmap --all-namespaces
+
+secrets
+---
+kubectl get secrets --all-namespaces
