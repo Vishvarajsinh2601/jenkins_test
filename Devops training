@@ -3084,7 +3084,9 @@ Post Assessment : https://forms.office.com/r/5ZSeQqwdPD
 Feedback: https://forms.office.com/r/SKCf1ChQ0H
 
 Email:
-
+jegannathan.v@gmail.com
+vikky2423@gmail.com
+samridhi100@gmail.com
 
 install istio
 ---
@@ -3145,3 +3147,210 @@ http://{your external ip}/productpage
 create default routing rules
 ---
 kubectl apply -f samples/bookinfo/networking/destination-rule-all.yaml -n servicemesh
+
+create a virtual service for review with user based routing
+----
+kubectl apply -f samples/bookinfo/networking/virtual-service-reviews-test-v2.yaml -n servicemesh
+
+check the url with out login
+---
+http://{your external ip}/productpage
+
+check the usrl with login as jason user
+---
+http://{your external ip}/productpage
+
+canary deploymente 50-50
+---
+kubectl apply -f samples/bookinfo/networking/virtual-service-reviews-50-v3.yaml -n servicemesh 
+
+canary deploymente 100% to v3
+---
+kubectl apply -f samples/bookinfo/networking/virtual-service-reviews-v3.yaml -n servicemesh
+
+Minikube instruction
+---
+https://minikube.sigs.k8s.io/docs/start/?arch=%2Fwindows%2Fx86-64%2Fstable%2F.exe+download
+
+
+Fork the repo
+---
+https://github.com/sathishbob/javaapp-kuber
+
+install docker pipeline
+---
+Dashboard  -- Manage Jenkins -- Plugins -- avaliable --  Docker Pipeline
+
+configure docker tool
+---
+Dashboard  -- Manage Jenkins -- tools -- docker installations 
+Add Docker
+Name: docker
+select "install automatically"
+add installer "download from docker.com"
+docker version : latest
+
+Create credentails for dockerhub
+----
+Dashboard -- Manage Jenkins -- Credentials -- System -- Global credentials (unrestricted)
+Kind : username with password
+Username: {your dockerhub id}
+Password: {your dockerhub passowrd}
+ID: dockerhub
+create
+
+on putty add jenkins user to docker group
+---
+usermod -a -G docker jenkins
+
+add jenkins users to sudoers file to run sudo command without password
+---
+visudo
+
+## add the below line
+
+# User privilege specification
+root    ALL=(ALL:ALL) ALL
+jenkins ALL= NOPASSWD: ALL
+
+## to save 
+Ctrl +x -- y -- enter
+
+restart jenkins
+----
+systemctl restart jenkins
+
+Modify jenkins file in your repo
+---
+pipeline {
+    environment {
+        imagename = "{your dockerhub id}/javaapp-jenkins-training"
+        dockerImage = ''
+        registryCredentials = 'dockerhub'
+    }
+    agent any
+    tools {
+        maven "MVN3"
+        dockerTool "docker"
+    }
+    
+    stages {
+        stage("pullscm") {
+            steps {
+                git credentialsId: 'github', url: 'git@github.com:{your github repo id}/javaapp-kuber.git'
+            }
+        }
+        stage("build") {
+            steps {
+                sh "mvn -f kubernetes-java clean install"
+            }
+        }
+        stage("Build Docker Image") {
+            steps {
+                script {
+                    dockerImage = docker.build("$imagename","kubernetes-java")
+                }
+            }
+        }
+        stage("push Docker image") {
+            steps {
+                script {
+                    docker.withRegistry( '', registryCredentials ) {
+                        dockerImage.push("$BUILD_NUMBER")
+                        dockerImage.push('latest')
+                    }
+                }
+            }
+        }
+        stage(Removeunusedimages) {
+            steps {
+                sh "docker rmi $imagename:$BUILD_NUMBER"
+                sh "docker rmi $imagename"
+            }
+        }
+        stage("kubedeployment") {
+            steps {
+                sh "sed -i s/latest/$BUILD_NUMBER/g kubernetes-java/deploy.yml"
+                sh "sudo kubectl apply -f kubernetes-java/deploy.yml"
+            }
+        }
+    }
+
+}
+
+modify the deploy.yaml under kubernetes-java
+----
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trainingjava
+  labels:
+    app: tomcat
+  annotations:
+    kubernetes.io/change-cause: Build no is test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tomcat
+  template:
+    metadata:
+      labels:
+        app: tomcat
+    spec:
+      containers:
+      - name: tomcat
+        image: {your dockerhub id}/javaapp-jenkins-training:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tomcatservice
+spec:
+  selector:
+    app: tomcat
+  ports:
+  - protocol: TCP
+    port: 8080
+  type: LoadBalancer
+
+
+
+create a new piple job
+---
+jenkins -- new item -- kubejavaapp -- pipeline
+
+Build Triggers -- poll scm -- Schedule "* * * * *"
+
+Definition: pipeline script from SCM
+SCM: GIT
+    repo URL: your repourl
+    Credentials: git
+    
+save
+
+build now
+
+get the publicip form svc
+---
+kubectl get svc
+
+access the application
+---
+http://{your public ip}:8080/newapp-0.0.1-SNAPSHOT/
+
+in the git modify the file to mimic a git push
+---
+kubernetes-java/src/main/webapp/index.jsp
+
+contact details
+---
+mail: sathishbob@gmail.com
+whatsapp: 9884627727
+
+Email:
+prakaash005@gmail.com
